@@ -1,9 +1,17 @@
+"""
+============================================================
+  Smart Peer Recommendation System
+  Based on Discrete Structures & Graph Theory (DSGT)
+  Mathematical Model: Jaccard Index + Weighted Undirected Graph
+============================================================
+"""
+
 import itertools
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
 from matplotlib.colors import Normalize
+import os
 
 # ─────────────────────────────────────────────────────────────
 # SECTION 1: Define the Universal Set and Student Profiles
@@ -24,7 +32,7 @@ student_names = list(students.keys())
 n = len(student_names)
 
 # ─────────────────────────────────────────────────────────────
-# SECTION 2: Jaccard Similarity
+# SECTION 2: Jaccard Similarity Function
 # ─────────────────────────────────────────────────────────────
 
 def jaccard_index(set_a, set_b):
@@ -37,7 +45,7 @@ def jaccard_index(set_a, set_b):
     return len(intersection) / len(union)
 
 # ─────────────────────────────────────────────────────────────
-# SECTION 3: Adjacency Matrix
+# SECTION 3: Build Adjacency Matrix
 # ─────────────────────────────────────────────────────────────
 
 adjacency_matrix = np.zeros((n, n))
@@ -66,10 +74,8 @@ for i, j in itertools.combinations(range(n), 2):
 
     print(f"J({si_name}, {sj_name}) = {score:.4f}{flag}")
 
-print("\nAdjacency Matrix:\n", adjacency_matrix)
-
 # ─────────────────────────────────────────────────────────────
-# SECTION 4: Graph Creation
+# SECTION 4: Build Graph
 # ─────────────────────────────────────────────────────────────
 
 G = nx.Graph()
@@ -90,33 +96,40 @@ print(f"\nGraph has {G.number_of_nodes()} nodes and {G.number_of_edges()} edges"
 
 fig, axes = plt.subplots(1, 2, figsize=(14, 6))
 
-# ---- GRAPH ----
+# ── Graph Plot ──
 ax1 = axes[0]
 
 pos = nx.spring_layout(G, weight="weight", seed=42)
 
-edges = G.edges(data=True)
+edges = list(G.edges(data=True))
 weights = [d["weight"] for _, _, d in edges]
 
-# UPDATED (no warning)
-colormap = plt.get_cmap("plasma")
-
-norm = Normalize(vmin=0, vmax=max(weights))
+norm = Normalize(vmin=0, vmax=1)
+colormap = plt.colormaps["YlOrRd"]
 edge_colors = [colormap(norm(w)) for w in weights]
-edge_widths = [1 + w * 5 for w in weights]
 
-nx.draw(G, pos,
-        ax=ax1,
-        with_labels=True,
-        node_color="skyblue",
-        edge_color=edge_colors,
-        width=edge_widths,
-        node_size=800,
-        font_weight="bold")
+max_w = max(weights) if weights else 1
+edge_widths = [1 + (w / max_w) * 5 for w in weights]
+
+nx.draw_networkx(
+    G,
+    pos,
+    ax=ax1,
+    with_labels=True,
+    node_color="skyblue",
+    edge_color=edge_colors,
+    width=edge_widths,
+    node_size=800,
+    font_size=10,
+)
+
+edge_labels = {(u, v): f"{d['weight']:.2f}" for u, v, d in edges}
+nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, ax=ax1)
 
 ax1.set_title("Peer Recommendation Graph")
+ax1.axis("off")
 
-# ---- HEATMAP ----
+# ── Heatmap ──
 ax2 = axes[1]
 
 display_matrix = adjacency_matrix.copy()
@@ -132,21 +145,20 @@ ax2.set_yticklabels(student_names)
 for i in range(n):
     for j in range(n):
         if i != j:
-            ax2.text(j, i, f"{adjacency_matrix[i][j]:.2f}",
-                     ha="center", va="center")
+            val = adjacency_matrix[i][j]
+            ax2.text(j, i, f"{val:.2f}", ha="center", va="center")
 
 plt.colorbar(im, ax=ax2)
 ax2.set_title("Adjacency Matrix")
 
 # ─────────────────────────────────────────────────────────────
-# SAVE + SHOW
+# SAVE OUTPUT (FIXED)
 # ─────────────────────────────────────────────────────────────
 
+output_file = "peer_recommendation_graph.png"
 plt.tight_layout()
+plt.savefig(output_file, dpi=150)
 
-
-plt.savefig("peer_recommendation_graph.png", dpi=150)
+print("\nGraph saved at:", os.path.abspath(output_file))
 
 plt.show()
-
-print("\nGraph saved as: peer_recommendation_graph.png")
